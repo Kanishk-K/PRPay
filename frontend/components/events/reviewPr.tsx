@@ -4,8 +4,10 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "../ui/
 import ReviewPRProps from "./types";
 
 export default function ReviewPR(props: ReviewPRProps){
+    const bgColor = props.status === "ineligible" ? "bg-gray-300/20" : "bg-sky-300/20";
+
     return (
-        <Card className="w-full bg-sky-300/20">
+        <Card className={`w-full ${bgColor}`}>
             <CardHeader>
                 <CardTitle>{props.pr_title}</CardTitle>
                 <CardDescription>{props.pr_created_at}</CardDescription>

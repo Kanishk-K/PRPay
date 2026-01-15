@@ -4,4 +4,5 @@ export default interface ReviewPRProps {
     pr_created_at: string;
     pr_url: string;
     payout: number;
+    status?: string;
 }
