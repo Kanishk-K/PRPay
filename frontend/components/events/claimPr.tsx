@@ -1,6 +1,5 @@
-import { HandCoins } from "lucide-react";
-import { Button } from "../ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import ClaimButton from "../claimButton";
 
 export default function ClaimPR(){
     return (
@@ -9,10 +8,7 @@ export default function ClaimPR(){
                 <CardTitle>PR Title</CardTitle>
                 <CardDescription>PR Date</CardDescription>
                 <CardAction>
-                    <Button variant="outline" className="hover:cursor-pointer">
-                        <HandCoins />
-                        Redeem $5.00
-                    </Button>
+                    <ClaimButton />
                 </CardAction>
             </CardHeader>
         </Card>

@@ -56,3 +56,19 @@ class PullRequestWebhookPayload(BaseModel):
     repository: RepositoryInfo
     sender: GitHubUser
     requested_reviewer: GitHubUser | None = None
+
+
+class ReviewData(BaseModel):
+    id: int
+    user: GitHubUser
+    state: str
+    submitted_at: datetime | None = None
+    html_url: str
+
+
+class PullRequestReviewWebhookPayload(BaseModel):
+    action: str
+    review: ReviewData
+    pull_request: PullRequestData
+    repository: RepositoryInfo
+    sender: GitHubUser

@@ -60,12 +60,6 @@ export function AppSidebar() {
                 <span>Team Overview</span>
               </a>
             </SidebarMenuButton>
-            <SidebarMenuButton asChild>
-              <div>
-                  <WalletMinimalIcon />
-                  <span>Wallet</span>
-              </div>
-            </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
     </SidebarFooter>
