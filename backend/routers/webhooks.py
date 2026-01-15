@@ -20,42 +20,17 @@ async def handle_github_pr_webhook(payload: PullRequestWebhookPayload):
         logger.debug("Ignoring action: %s", payload.action)
         return {"status": "ignored", "action": payload.action}
 
-    # db = get_db()
+    db = get_db()
     pr = payload.pull_request
 
     match action:
         case PRAction.OPENED:
-            logger.info(
-                "PR #%d opened: %s by %s — %s",
-                pr.number,
-                pr.title,
-                pr.user.login,
-                pr.html_url,
-            )
+            webhook_handler.handle_pr_opened(db, payload)
 
         case PRAction.CLOSED:
-            if pr.merged:
-                logger.info(
-                    "PR #%d merged at %s — %s",
-                    pr.number,
-                    pr.merged_at,
-                    pr.html_url,
-                )
-            else:
-                logger.info(
-                    "PR #%d closed at %s — %s",
-                    pr.number,
-                    pr.closed_at,
-                    pr.html_url,
-                )
+            webhook_handler.handle_pr_closed(db, payload)
 
         case PRAction.REVIEW_REQUESTED:
-            reviewer = payload.requested_reviewer
-            logger.info(
-                "PR #%d review requested from %s — %s",
-                pr.number,
-                reviewer.login if reviewer else "unknown",
-                pr.html_url,
-            )
+            webhook_handler.handle_review_requested(db, payload)
 
     return {"status": "processed", "action": action, "pr_number": pr.number}
