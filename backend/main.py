@@ -1,7 +1,172 @@
-from fastapi import FastAPI
- 
-app = FastAPI()
- 
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional
+from database import get_db
+from models import PRReviewWithDetails
+from schemas import ClaimPRRequest, ClaimPRResponse
+from enums import ReviewStatus
+
+app = FastAPI(
+    title="PRPay API",
+    description="API for managing PR reviews and rewards",
+    version="1.0.0"
+)
+
+# CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.get("/")
 def read_root():
-    return {"Python": "on Vercel"}
+    return {
+        "message": "PRPay API",
+        "version": "1.0.0",
+        "endpoints": {
+            "GET /getPRs": "Get PR reviews for a user",
+            "POST /claimPR": "Claim a PR review"
+        }
+    }
+
+
+@app.get(
+    "/getPRs",
+    response_model=List[PRReviewWithDetails],
+    summary="Get PR reviews for a user",
+    description="Retrieve PR reviews for a specific user, optionally filtered by status"
+)
+def get_prs(
+    user_id: str = Query(..., description="GitHub user ID of the reviewer"),
+    status: Optional[ReviewStatus] = Query(None, description="Filter by review status")
+):
+    """
+    Get all PR reviews for a specific user, with optional status filter.
+
+    Args:
+        user_id: GitHub user ID
+        status: Optional status filter (requested, claimable, claimed, ineligible, done)
+
+    Returns:
+        List of PR reviews with full PR details
+    """
+    try:
+        db = get_db()
+
+        # Build query to join user_pr_reviews with pull_requests
+        query = db.table("user_pr_reviews") \
+            .select(
+                "id, user_id, pr_id, status, payout, timestamp, "
+                "pull_requests(id, title, body, url, created_at)"
+            ) \
+            .eq("user_id", user_id)
+
+        # Add status filter if provided
+        if status:
+            query = query.eq("status", status.value)
+
+        # Execute query
+        response = query.execute()
+
+        # Transform the data to match our response model
+        results = []
+        for item in response.data:
+            pr_data = item.get("pull_requests")
+            if pr_data:
+                results.append({
+                    "pr_id": pr_data["id"],
+                    "pr_title": pr_data["title"],
+                    "pr_body": pr_data["body"],
+                    "pr_url": pr_data["url"],
+                    "pr_created_at": pr_data["created_at"],
+                    "review_id": item["id"],
+                    "user_id": item["user_id"],
+                    "status": item["status"],
+                    "payout": float(item["payout"]),
+                    "review_timestamp": item["timestamp"]
+                })
+
+        return results
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch PR reviews: {str(e)}"
+        )
+
+
+@app.post(
+    "/claimPR",
+    response_model=ClaimPRResponse,
+    summary="Claim a PR review",
+    description="Claim a PR review by updating its status from 'claimable' to 'claimed'"
+)
+def claim_pr(request: ClaimPRRequest):
+    """
+    Claim a PR review. Only works if the review status is 'claimable'.
+
+    Args:
+        request: ClaimPRRequest with user_id and pr_id
+
+    Returns:
+        ClaimPRResponse with success status and updated review details
+    """
+    try:
+        db = get_db()
+
+        # First, fetch the current review to check its status
+        review_response = db.table("user_pr_reviews") \
+            .select("id, status") \
+            .eq("user_id", request.user_id) \
+            .eq("pr_id", request.pr_id) \
+            .execute()
+
+        if not review_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No review found for user_id={request.user_id} and pr_id={request.pr_id}"
+            )
+
+        review = review_response.data[0]
+        current_status = review["status"]
+
+        # Check if status is 'claimable'
+        if current_status != ReviewStatus.CLAIMABLE.value:
+            return ClaimPRResponse(
+                success=False,
+                message=f"Cannot claim PR. Current status is '{current_status}', must be 'claimable'",
+                review_id=review["id"],
+                status=ReviewStatus(current_status)
+            )
+
+        # Update status to 'claimed'
+        update_response = db.table("user_pr_reviews") \
+            .update({"status": ReviewStatus.CLAIMED.value}) \
+            .eq("user_id", request.user_id) \
+            .eq("pr_id", request.pr_id) \
+            .execute()
+
+        if update_response.data:
+            return ClaimPRResponse(
+                success=True,
+                message="PR successfully claimed",
+                review_id=review["id"],
+                status=ReviewStatus.CLAIMED
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update review status"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to claim PR: {str(e)}"
+        )
