@@ -1,4 +1,4 @@
-import { CircleCheckBig, Coins, Inbox } from "lucide-react"
+import { CircleCheckBig, Coins, Inbox, ShieldUser, WalletMinimalIcon } from "lucide-react"
 
 import {
   Sidebar,
@@ -10,7 +10,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import WalletBar from "./walletBar";
 
 // Menu items.
 const items = [
@@ -56,7 +55,16 @@ export function AppSidebar() {
       <SidebarMenu>
         <SidebarMenuItem>
             <SidebarMenuButton asChild>
-                <WalletBar />
+              <a href="/dashboard/admin">
+                <ShieldUser />
+                <span>Team Overview</span>
+              </a>
+            </SidebarMenuButton>
+            <SidebarMenuButton asChild>
+              <div>
+                  <WalletMinimalIcon />
+                  <span>Wallet</span>
+              </div>
             </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
