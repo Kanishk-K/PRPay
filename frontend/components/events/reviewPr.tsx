@@ -1,7 +1,7 @@
 import { GitBranch } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { ReviewPRProps } from "./claimPr";
+import ReviewPRProps from "./types";
 
 export default function ReviewPR(props: ReviewPRProps){
     return (
