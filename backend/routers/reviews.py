@@ -1,4 +1,5 @@
 from typing import Any, cast
+import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -6,6 +7,9 @@ from db import get_db
 from models.enums import ReviewStatus
 from models.domain import PRReviewWithDetails
 from models.requests import ClaimPRRequest, ClaimPRResponse
+from services.crypto_payment import get_payment_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["reviews"])
 
@@ -65,12 +69,13 @@ def get_prs(
     summary="Claim a PR review",
 )
 def claim_pr(request: ClaimPRRequest) -> ClaimPRResponse:
-    """Claim a PR review. Only works if the review status is 'claimable'."""
+    """Claim a PR review and send ETH payment on Base Sepolia. Only works if the review status is 'claimable'."""
     db = get_db()
 
+    # Fetch the review details
     review_response = (
         db.table("user_pr_reviews")
-        .select("id, status")
+        .select("id, status, payout")
         .eq("user_id", request.user_id)
         .eq("pr_id", request.pr_id)
         .execute()
@@ -86,6 +91,7 @@ def claim_pr(request: ClaimPRRequest) -> ClaimPRResponse:
     review = data[0]
     current_status: str = review["status"]
 
+    # Validate status is claimable
     if current_status != ReviewStatus.CLAIMABLE:
         return ClaimPRResponse(
             success=False,
@@ -94,13 +100,57 @@ def claim_pr(request: ClaimPRRequest) -> ClaimPRResponse:
             status=ReviewStatus(current_status),
         )
 
-    db.table("user_pr_reviews").update({"status": ReviewStatus.CLAIMED.value}).eq(
-        "user_id", request.user_id
-    ).eq("pr_id", request.pr_id).execute()
+    # Validate wallet address
+    try:
+        payment_service = get_payment_service()
+        if not payment_service.validate_address(request.wallet_address):
+            return ClaimPRResponse(
+                success=False,
+                message="Invalid Ethereum wallet address",
+                review_id=review["id"],
+                status=ReviewStatus.CLAIMABLE,
+                error="Invalid wallet address format"
+            )
+    except Exception as e:
+        logger.error(f"Failed to initialize payment service: {e}")
+        return ClaimPRResponse(
+            success=False,
+            message="Payment service unavailable",
+            review_id=review["id"],
+            status=ReviewStatus.CLAIMABLE,
+            error=str(e)
+        )
 
-    return ClaimPRResponse(
-        success=True,
-        message="PR successfully claimed",
-        review_id=review["id"],
-        status=ReviewStatus.CLAIMED,
+    # Execute crypto payment (fixed amount: 0.0000001 ETH)
+    payment_amount = 0.0000001
+    logger.info(f"Attempting to send {payment_amount} ETH to {request.wallet_address}")
+
+    payment_result = payment_service.send_eth_payment(
+        recipient_address=request.wallet_address,
+        amount_eth=payment_amount
     )
+
+    # Handle payment result
+    if payment_result["success"]:
+        # Payment successful - update status to claimed
+        db.table("user_pr_reviews").update({"status": ReviewStatus.CLAIMED.value}).eq(
+            "user_id", request.user_id
+        ).eq("pr_id", request.pr_id).execute()
+
+        return ClaimPRResponse(
+            success=True,
+            message=f"PR successfully claimed. {payment_amount} ETH sent to {request.wallet_address}",
+            review_id=review["id"],
+            status=ReviewStatus.CLAIMED,
+            transaction_hash=payment_result["transaction_hash"]
+        )
+    else:
+        # Payment failed - keep status as claimable
+        logger.error(f"Payment failed: {payment_result['error']}")
+        return ClaimPRResponse(
+            success=False,
+            message="PR claim failed due to payment error. Please try again.",
+            review_id=review["id"],
+            status=ReviewStatus.CLAIMABLE,
+            error=payment_result["error"]
+        )

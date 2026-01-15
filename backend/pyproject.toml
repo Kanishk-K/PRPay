@@ -8,4 +8,5 @@ dependencies = [
   "sqlalchemy>=2.0.45",
   "supabase>=2.27.2",
   "uvicorn>=0.34.0",
+  "web3>=7.6.0",
 ]
