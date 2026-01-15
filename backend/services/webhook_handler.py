@@ -1,4 +1,5 @@
 import logging
+from typing import Any, cast
 
 from supabase import Client
 
@@ -31,12 +32,14 @@ def upsert_pull_request(db: Client, payload: PullRequestWebhookPayload) -> int:
         on_conflict="url",
     ).execute()
 
-    if result.data:
-        return result.data[0]["id"]
+    data = cast(list[dict[str, Any]], result.data or [])
+    if data:
+        return int(data[0]["id"])
 
     # If upsert didn't return data, fetch by URL
     fetch_result = db.table("pull_requests").select("id").eq("url", pr.html_url).execute()
-    return fetch_result.data[0]["id"]
+    fetch_data = cast(list[dict[str, Any]], fetch_result.data or [])
+    return int(fetch_data[0]["id"])
 
 
 def handle_pr_opened(db: Client, payload: PullRequestWebhookPayload) -> None:
@@ -58,15 +61,16 @@ def handle_pr_closed(db: Client, payload: PullRequestWebhookPayload) -> None:
 
     # Get PR ID from database
     pr_result = db.table("pull_requests").select("id").eq("url", pr_url).execute()
-    if not pr_result.data:
+    pr_data = cast(list[dict[str, Any]], pr_result.data or [])
+    if not pr_data:
         logger.warning("PR not found in database: %s", pr_url)
         return
 
-    pr_id = pr_result.data[0]["id"]
+    pr_id = pr_data[0]["id"]
     new_status = ReviewStatus.CLAIMABLE if pr.merged else ReviewStatus.INELIGIBLE
 
-    db.table("user_pr_reviews").update({"status": new_status}).eq("pr_id", pr_id).eq(
-        "status", ReviewStatus.REQUESTED
+    db.table("user_pr_reviews").update({"status": new_status.value}).eq("pr_id", pr_id).eq(
+        "status", ReviewStatus.REQUESTED.value
     ).execute()
 
     action = "merged" if pr.merged else "closed"
@@ -95,7 +99,7 @@ def handle_review_requested(db: Client, payload: PullRequestWebhookPayload) -> N
         {
             "user_id": str(reviewer.id),
             "pr_id": pr_id,
-            "status": ReviewStatus.REQUESTED,
+            "status": ReviewStatus.REQUESTED.value,
             "payout": 0.00,
         },
         on_conflict="user_id,pr_id",

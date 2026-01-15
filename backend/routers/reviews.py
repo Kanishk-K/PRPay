@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from fastapi import APIRouter, HTTPException, Query
 
 from db import get_db
@@ -16,7 +18,7 @@ router = APIRouter(tags=["reviews"])
 def get_prs(
     user_id: str = Query(..., description="GitHub user ID of the reviewer"),
     status: ReviewStatus | None = Query(None, description="Filter by review status"),
-):
+) -> list[dict[str, Any]]:
     """Get all PR reviews for a specific user, with optional status filter."""
     db = get_db()
 
@@ -33,11 +35,12 @@ def get_prs(
         query = query.eq("status", status.value)
 
     response = query.execute()
+    data = cast(list[dict[str, Any]], response.data or [])
 
-    results = []
-    for item in response.data:
+    results: list[dict[str, Any]] = []
+    for item in data:
         pr_data = item.get("pull_requests")
-        if pr_data:
+        if isinstance(pr_data, dict):
             results.append(
                 {
                     "pr_id": pr_data["id"],
@@ -61,7 +64,7 @@ def get_prs(
     response_model=ClaimPRResponse,
     summary="Claim a PR review",
 )
-def claim_pr(request: ClaimPRRequest):
+def claim_pr(request: ClaimPRRequest) -> ClaimPRResponse:
     """Claim a PR review. Only works if the review status is 'claimable'."""
     db = get_db()
 
@@ -73,14 +76,15 @@ def claim_pr(request: ClaimPRRequest):
         .execute()
     )
 
-    if not review_response.data:
+    data = cast(list[dict[str, Any]], review_response.data or [])
+    if not data:
         raise HTTPException(
             status_code=404,
             detail=f"No review found for user_id={request.user_id} and pr_id={request.pr_id}",
         )
 
-    review = review_response.data[0]
-    current_status = review["status"]
+    review = data[0]
+    current_status: str = review["status"]
 
     if current_status != ReviewStatus.CLAIMABLE:
         return ClaimPRResponse(
@@ -90,7 +94,7 @@ def claim_pr(request: ClaimPRRequest):
             status=ReviewStatus(current_status),
         )
 
-    db.table("user_pr_reviews").update({"status": ReviewStatus.CLAIMED}).eq(
+    db.table("user_pr_reviews").update({"status": ReviewStatus.CLAIMED.value}).eq(
         "user_id", request.user_id
     ).eq("pr_id", request.pr_id).execute()
 
