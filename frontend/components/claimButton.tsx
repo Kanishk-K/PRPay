@@ -29,7 +29,7 @@ export default function ClaimButton({ pr_id, payout }: { pr_id: number, payout: 
             body: JSON.stringify({
                 user_id: githubId,
                 pr_id: pr_id,
-                wallet_address: wallet.address || "0x05CC9F938416C4c7D5B8B1fd4B4a7cf7bDbC8f35"
+                wallet_address: wallet?.address || "0x05CC9F938416C4c7D5B8B1fd4B4a7cf7bDbC8f35"
             })
             }
         );
