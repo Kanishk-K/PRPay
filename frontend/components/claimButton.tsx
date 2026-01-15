@@ -20,7 +20,7 @@ export default function ClaimButton({ pr_id, payout }: { pr_id: number, payout: 
 
     const handleClaim = async () => {
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/claimPr`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}claimPr`,
             {
             method: 'POST',
             headers: {
