@@ -1,3 +1,4 @@
+// handles callback auth
 import { supabase } from '@/lib/supabase/client'
 
 export async function signInWithGithub() {
