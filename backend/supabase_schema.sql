@@ -4,6 +4,7 @@
 -- Create enum type for review status
 CREATE TYPE review_status AS ENUM (
     'requested',
+    'approved',
     'claimable',
     'claimed',
     'ineligible',
@@ -22,7 +23,7 @@ CREATE TABLE pull_requests (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     body TEXT,
-    url TEXT NOT NULL,
+    url TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -47,5 +48,5 @@ CREATE INDEX idx_user_pr_reviews_user_status ON user_pr_reviews(user_id, status)
 COMMENT ON TABLE users IS 'GitHub users who review pull requests';
 COMMENT ON TABLE pull_requests IS 'Pull requests that can be reviewed';
 COMMENT ON TABLE user_pr_reviews IS 'Many-to-many relationship tracking user reviews of PRs with payout information';
-COMMENT ON COLUMN user_pr_reviews.status IS 'Current status: requested, claimable, claimed, ineligible, or done';
+COMMENT ON COLUMN user_pr_reviews.status IS 'Current status: requested, approved, claimable, claimed, ineligible, or done';
 COMMENT ON COLUMN user_pr_reviews.payout IS 'Payout amount in dollars for this review';
