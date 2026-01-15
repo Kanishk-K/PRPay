@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAccount } from 'wagmi';
 
 interface Wallet {
   address: string;
@@ -19,9 +20,19 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  const { address, isConnected } = useAccount();
 
-  const connectWallet = (address: string) => {
-    setWallet({ address });
+  // Sync Wagmi account state with wallet context
+  useEffect(() => {
+    if (isConnected && address) {
+      setWallet({ address });
+    } else {
+      setWallet(null);
+    }
+  }, [address, isConnected]);
+
+  const connectWallet = (walletAddress: string) => {
+    setWallet({ address: walletAddress });
   };
 
   const disconnectWallet = () => {
@@ -29,7 +40,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <WalletContext.Provider 
+    <WalletContext.Provider
       value={{ wallet, setWallet, connectWallet, disconnectWallet }}
     >
       {children}
