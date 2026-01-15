@@ -1,5 +1,7 @@
-from .webhook import (
-    PRAction,
+from models.enums import ReviewStatus, PRAction
+from models.domain import User, PullRequest, UserPRReview, PRReviewWithDetails
+from models.requests import ClaimPRRequest, ClaimPRResponse, ErrorResponse
+from models.webhook import (
     GitHubUser,
     BranchInfo,
     RepositoryInfo,
@@ -8,7 +10,19 @@ from .webhook import (
 )
 
 __all__ = [
+    # Enums
+    "ReviewStatus",
     "PRAction",
+    # Domain models
+    "User",
+    "PullRequest",
+    "UserPRReview",
+    "PRReviewWithDetails",
+    # Request/Response
+    "ClaimPRRequest",
+    "ClaimPRResponse",
+    "ErrorResponse",
+    # Webhook
     "GitHubUser",
     "BranchInfo",
     "RepositoryInfo",

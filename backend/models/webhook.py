@@ -1,13 +1,6 @@
 from datetime import datetime
-from enum import StrEnum
 
 from pydantic import BaseModel, Field
-
-
-class PRAction(StrEnum):
-    OPENED = "opened"
-    CLOSED = "closed"
-    REVIEW_REQUESTED = "review_requested"
 
 
 class GitHubUser(BaseModel):
