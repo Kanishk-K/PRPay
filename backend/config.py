@@ -14,10 +14,7 @@ class Settings:
     WALLET_PRIVATE_KEY: str = os.getenv("WALLET_PRIVATE_KEY", "")
     BASE_SEPOLIA_RPC_URL: str = os.getenv("BASE_SEPOLIA_RPC_URL", "https://chain-proxy.wallet.coinbase.com?targetName=base-sepolia")
 
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-    ]
+    CORS_ORIGINS: list[str] = ["*"]
 
 
 @lru_cache
